@@ -39,13 +39,13 @@ def get_vulnerability_details_of_the_image(registry_repo_tag, image_sha: str):
     response = requests.get(url, headers=headers)
 
     image_vulnerabilities = []
-    qid_info = {}
+
     if response.status_code == 200:
         vulnerabilities = response.json()['vulnerabilities']
 
         for vulnerability in vulnerabilities:
-
             try:
+                qid_info = {}
                 qid_info.update({
                     'sha': image_sha,
                     'registry_repo_tag': registry_repo_tag,
