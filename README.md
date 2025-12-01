@@ -12,7 +12,7 @@ This repository provides an automated workflow for creating and managing Jira ti
 
 
 ```qql
-vulnerabilities:(severity:5 or severity:4) and not imagesInUse:`[now-7d ... now]` and tags.name: Jira_ticket 
+vulnerabilities:(severity:5 or severity:4) and not imagesInUse:`[now-7d ... now]` and not tags.name: <qualys_tag> 
 ```
 
 ## 📄 Config File: `config.json` 
