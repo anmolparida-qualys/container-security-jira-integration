@@ -23,6 +23,11 @@ def validate_if_tag_exists(qualys_tag):
     if response.status_code == 200:
         if qualys_tag in response.json()["tagDetails"]['existingTags'].keys():
             return response.json()["tagDetails"]['existingTags'][qualys_tag]
+        else:
+            print(f"Tag [{qualys_tag}] does not exist. Please provide valid qualys_tag.")
+            print(f"<< Script Execution Completed >>")
+            sys.exit(0)
+
     else:
         sys.exit(f"Provided tag {[qualys_tag]} does not exist."
                  f" Status {response.status_code}, Response: {response.text}")
