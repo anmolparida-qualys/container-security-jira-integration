@@ -1,5 +1,4 @@
 import sys
-from logging import raiseExceptions
 
 from config_loader import config
 
@@ -9,29 +8,52 @@ qualys_access_token = config["qualys_access_token"]
 headers = {"Authorization": f"Bearer {config['qualys_access_token']}"}
 
 import requests
-import json
+
+
+def validate_if_tag_exists(qualys_tag):
+    print(f"Checking if qualys_tag [{qualys_tag}] exists")
+    payload = {
+        "tagsToValidate": [
+            qualys_tag
+        ]
+    }
+    url = f"{qualys_api_gateway_url}/csapi/v1.3/tag/exist"
+    response = requests.post(url, json=payload, headers=headers)
+
+    if response.status_code == 200:
+        if qualys_tag in response.json()["tagDetails"]['existingTags'].keys():
+            return response.json()["tagDetails"]['existingTags'][qualys_tag]
+    else:
+        sys.exit(f"Provided tag {[qualys_tag]} does not exist."
+                 f" Status {response.status_code}, Response: {response.text}")
 
 
 def get_all_images(qql: str) -> dict:
     url = f"{qualys_api_gateway_url}/csapi/v1.3/images?filter={qql}"
-    print(f"GET {url}")
     response = requests.get(url, headers=headers)
 
-    registry_repo_tag_sha = {}
+    image_dict = {}
     if response.status_code == 200:
         images = response.json().get("data", [])
         if images:
             for image in images:
                 repo = image['repo'][0]
                 registry_repo_tag: str = f"{repo['registry']}/{repo['repository']}:{repo['tag']}"
-                registry_repo_tag_sha = {registry_repo_tag: image.get("sha")}
+                image_dict = {
+                    registry_repo_tag: {
+                        'sha': image.get("sha"),
+                        'uuid': image.get("uuid")
+                    }
+                }
 
     elif response.status_code == 204:
         print(f"No images found with the provided qql >> {qql}")
+        print(f"<< Script Execution Completed >>")
+        sys.exit(0)
     else:
         sys.exit(f"Failed to fetch images. Status {response.status_code}, Response: {response.text}")
 
-    return registry_repo_tag_sha
+    return image_dict
 
 
 def get_vulnerability_details_of_the_image(registry_repo_tag, image_sha: str):
@@ -81,3 +103,22 @@ def get_vulnerability_details_of_the_image(registry_repo_tag, image_sha: str):
         raise RuntimeError(f"Failed to fetch image details. Status {response.status_code}, Response: {response.text}")
 
     return image_vulnerabilities
+
+
+def assign_tag_to_assets(registry_repo_tag, qualys_tag, tag_uuid, entity_uuid):
+    # https://docs.qualys.com/en/cs/api/asset_tagging/assign_tags_to_an_asset.htm
+    payload = {"entityType": "IMAGE",
+               "tagsToAdd": [{
+                   "tagUuid": tag_uuid,
+                   "isCascadeToContainer": False}],
+               "entityUUID": entity_uuid}
+
+    url = f"{qualys_api_gateway_url}/csapi/v1.3/tag/assign"
+    response = requests.post(url, json=payload, headers=headers)
+
+    if response.status_code == 200:
+        print(f"Assigned tag [{qualys_tag}] to asset [{registry_repo_tag}]")
+        return True
+    else:
+        sys.exit(f"Provided tag {[qualys_tag]} does not exist."
+                 f" Status {response.status_code}, Response: {response.text}")

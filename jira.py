@@ -53,8 +53,7 @@ def create_jira_issue(summary, description_json) -> None:
     )
 
     if response.status_code == 201:
-        print("Issue created successfully!")
-        print("Issue key:", response.json()["key"])
+        print(f"JIRA issue [{response.json()["key"]}] created successfully for >> {summary}")
     else:
-        print("Error:", response.status_code)
+        print("Failed to create JIRA issue:", response.status_code)
         print(response.text)
