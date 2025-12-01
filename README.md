@@ -1,27 +1,21 @@
-Jira ticket for image vulnerability management: 
 
-Use Case: 
+## Image Vulnerability Management – Jira Ticket Automation
 
-Customers don’t want to go with creating the container based connector for creating the JIRA ticket creation, customer is not comfortable to spin up the docker instance in their environment.  
+This repository provides an automated workflow for creating and managing Jira tickets for vulnerable container images **without requiring customers to deploy a container-based connector**. The solution relies on QQL-based filtering to detect high-severity vulnerabilities and automatically openQID based Jira tickets.
 
- 
+---
 
-Initial Proposed solution: 
+## 🔎 Use Case
+- Identify container images with a specific QQL i.e. with high-severity vulnerabilities  
+- Automatically create Jira tickets per vulnerability (QID)  
+- Once Jira issue is created for all QIDs tag the image to avoid duplicate ticket creation   
 
-So, we are proposing below approach 
 
-We would be initially filtering the images using a QQL token like, 
-
- vulnerabilities:(severity:5 or severity:4) and imagesInUse:`[now-7d ... now]` 
-
-Based on the filtered listed images, we would be creating a JIRA ticket for each vulnerability and post creations of the respective JIRA tickets we would be tagging the respective image as “Jira_ticket”. 
-
-This tagging will help to identify as to for how many images the JIRA tickets have been created. 
-
-While closing the ticket, we will close the JIRA ticket based on the QQL token as below, 
-
+```qql
 vulnerabilities:(severity:5 or severity:4) and not imagesInUse:`[now-7d ... now]` and tags.name: Jira_ticket 
+```
 
+## 📄 Config File: `config.json` 
 
 ```json
 {
