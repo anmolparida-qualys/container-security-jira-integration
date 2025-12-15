@@ -1,11 +1,37 @@
 import requests
 import json
-from config_loader import config
+import configurations
 
-# config.json >> config loader
-jira_domain = config["jira_domain"]
-jira_email = config["jira_email"]
-jira_api_token = config["jira_api_token"]
+# configurations.py >> config loader
+jira_domain = configurations.variables["jira_domain"]
+jira_email = configurations.variables["jira_email"]
+jira_api_token = configurations.variables["jira_api_token"]
+
+import requests
+from requests.auth import HTTPBasicAuth
+
+
+def check_jira_credentials():
+    print("Validating Jira Credentials")
+    url = f"{jira_domain}/rest/api/3/myself"
+
+    try:
+        response = requests.get(
+            url,
+            auth=HTTPBasicAuth(jira_email, jira_api_token),
+            headers={"Accept": "application/json"}
+        )
+
+        if response.status_code != 200:
+            print(f"Invalid Jira credentials. Status code: {response.status_code}")
+            print(f'Please check the values ["jira_domain","jira_email","jira_api_token"]')
+        else:
+            return True
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error connecting to Jira: {e}")
+        print(f'Please check the values ["jira_domain","jira_email","jira_api_token"]')
+        return False
 
 
 def create_jira_issue(summary, description_json) -> None:

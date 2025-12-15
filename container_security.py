@@ -1,11 +1,10 @@
 import sys
+import configurations
 
-from config_loader import config
-
-# config.json >> config loader
-qualys_api_gateway_url = config["qualys_api_gateway_url"]
-qualys_access_token = config["qualys_access_token"]
-headers = {"Authorization": f"Bearer {config['qualys_access_token']}"}
+# configurations.py >> config loader
+qualys_api_gateway_url = configurations.variables["qualys_api_gateway_url"]
+qualys_access_token = configurations.variables["qualys_access_token"]
+headers = {"Authorization": f"Bearer {configurations.variables['qualys_access_token']}"}
 
 import requests
 
