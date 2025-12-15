@@ -28,3 +28,17 @@ vulnerabilities:(severity:5 or severity:4) and not imagesInUse:`[now-7d ... now]
   "qualys_tag": "JiraTest1"
 }
 ```
+
+
+How to containerize
+```shell
+docker run -p 8080:8080 \
+  -e JIRA_DOMAIN="https://yourcompany.atlassian.net" \
+  -e JIRA_EMAIL="your_email@example.com" \
+  -e JIRA_API_TOKEN="your_jira_api_token_here" \
+  -e QUALYS_API_GATEWAY_URL="https://gateway.qg1.apps.qualys.ca" \
+  -e QUALYS_ACCESS_TOKEN="your_qualys_api_token_here" \
+  -e QUALYS_QQL="vulnerabilities:(severity:5 or severity:4) and not imagesInUse:[now-7d ... now]" \
+  -e QUALYS_TAG="JiraTest1" \
+  your-image-name
+```
