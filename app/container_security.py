@@ -1,12 +1,11 @@
 import sys
 import configurations
+import requests
 
 # configurations.py >> config loader
 qualys_api_gateway_url = configurations.variables["qualys_api_gateway_url"]
 qualys_access_token = configurations.variables["qualys_access_token"]
 headers = {"Authorization": f"Bearer {configurations.variables['qualys_access_token']}"}
-
-import requests
 
 
 def validate_if_tag_exists(qualys_tag):

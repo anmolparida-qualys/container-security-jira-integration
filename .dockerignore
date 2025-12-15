@@ -1,0 +1,33 @@
+# VCS
+.git
+
+# IDEs
+.idea
+.vscode
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# Environment files
+.env
+*.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Tests & docs
+tests/
+docs/
+
+# Node (if any frontend)
+node_modules/
+
+# Build artifacts
+dist/
+build/

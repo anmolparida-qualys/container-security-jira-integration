@@ -1,4 +1,3 @@
-import requests
 import json
 import configurations
 
@@ -24,6 +23,7 @@ def check_jira_credentials():
 
         if response.status_code != 200:
             print(f"Invalid Jira credentials. Status code: {response.status_code}")
+            print(response.text)
             print(f'Please check the values ["jira_domain","jira_email","jira_api_token"]')
         else:
             return True

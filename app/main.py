@@ -26,6 +26,7 @@ def load_config():
 
 
 if __name__ == '__main__':
+    print(f"\n==================================\n")
     print(f"<< Script Execution Started >>")
 
     configurations.variables = load_config()
@@ -70,3 +71,4 @@ if __name__ == '__main__':
             assign_tag_to_assets(registry_repo_tag, qualys_tag, tag_uuid, image_uuid)
 
     print(f"<< Script Execution Completed >>")
+    print(f"\n==================================\n")
