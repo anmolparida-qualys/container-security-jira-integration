@@ -2,10 +2,19 @@ import sys
 import configurations
 import requests
 
-# configurations.py >> config loader
-qualys_api_gateway_url = configurations.variables["qualys_api_gateway_url"]
-qualys_access_token = configurations.variables["qualys_access_token"]
-headers = {"Authorization": f"Bearer {configurations.variables['qualys_access_token']}"}
+
+def get_headers():
+    return {
+        "Authorization": f"Bearer {configurations.get('qualys_access_token')}"
+    }
+
+
+def get_qualys_api_gateway_url() -> str:
+    return configurations.get("qualys_api_gateway_url")
+
+
+def get_qualys_access_token() -> str:
+    return configurations.get("qualys_access_token")
 
 
 def validate_if_tag_exists(qualys_tag):
@@ -15,11 +24,12 @@ def validate_if_tag_exists(qualys_tag):
             qualys_tag
         ]
     }
-    url = f"{qualys_api_gateway_url}/csapi/v1.3/tag/exist"
-    response = requests.post(url, json=payload, headers=headers)
+    url = f"{get_qualys_api_gateway_url()}/csapi/v1.3/tag/exist"
+    response = requests.post(url, json=payload, headers=get_headers())
 
     if response.status_code == 200:
         if qualys_tag in response.json()["tagDetails"]['existingTags'].keys():
+            print(f"qualys_tag [{qualys_tag}] exists")
             return response.json()["tagDetails"]['existingTags'][qualys_tag]
         else:
             print(f"Tag [{qualys_tag}] does not exist. Please provide valid qualys_tag.")
@@ -32,8 +42,9 @@ def validate_if_tag_exists(qualys_tag):
 
 
 def get_all_images(qql: str) -> dict:
-    url = f"{qualys_api_gateway_url}/csapi/v1.3/images?filter={qql}"
-    response = requests.get(url, headers=headers)
+    url = f"{get_qualys_api_gateway_url()}/csapi/v1.3/images?filter={qql}"
+    print(url)
+    response = requests.get(url, headers=get_headers())
 
     image_dict = {}
     if response.status_code == 200:
@@ -49,6 +60,12 @@ def get_all_images(qql: str) -> dict:
                     }
                 }
 
+
+    elif response.status_code == 400:
+        print(f"Please check if the syntax of qql >> {qql}")
+        print(f"<< Script Execution Terminated >>")
+        sys.exit(0)
+
     elif response.status_code == 204:
         print(f"No images found with the provided qql >> {qql}")
         print(f"<< Script Execution Completed >>")
@@ -60,8 +77,8 @@ def get_all_images(qql: str) -> dict:
 
 
 def get_vulnerability_details_of_the_image(registry_repo_tag, image_sha: str):
-    url = f"{qualys_api_gateway_url}/csapi/v1.3/images/{image_sha}"
-    response = requests.get(url, headers=headers)
+    url = f"{get_qualys_api_gateway_url}/csapi/v1.3/images/{image_sha}"
+    response = requests.get(url, headers=get_headers())
 
     image_vulnerabilities = []
 
@@ -116,8 +133,8 @@ def assign_tag_to_assets(registry_repo_tag, qualys_tag, tag_uuid, entity_uuid):
                    "isCascadeToContainer": False}],
                "entityUUID": entity_uuid}
 
-    url = f"{qualys_api_gateway_url}/csapi/v1.3/tag/assign"
-    response = requests.post(url, json=payload, headers=headers)
+    url = f"{get_qualys_api_gateway_url}/csapi/v1.3/tag/assign"
+    response = requests.post(url, json=payload, headers=get_headers())
 
     if response.status_code == 200:
         print(f"Assigned tag [{qualys_tag}] to asset [{registry_repo_tag}]")

@@ -7,3 +7,7 @@ variables = {
     "qualys_qql": "vulnerabilities:(severity:5 or severity:4) and not imagesInUse:[now-7d ... now]",
     "qualys_tag": "JiraTest1"
 }
+
+
+def get(key, default=None):
+    return variables.get(key, default)

@@ -26,10 +26,10 @@ def load_config():
 
 
 if __name__ == '__main__':
-    print(f"\n==================================\n")
-    print(f"<< Script Execution Started >>")
+    print(f"\n================================== Script Execution Started ==================================\n")
 
-    configurations.variables = load_config()
+    configurations.variables.clear()
+    configurations.variables.update(load_config())
 
     # validate if JIRA credentials provided are correct
     if not check_jira_credentials():
@@ -58,7 +58,6 @@ if __name__ == '__main__':
         image_vulnerabilities = get_vulnerability_details_of_the_image(registry_repo_tag, image_sha)
         print(f"Creating JIRA tickets for all QIDs present in registry_repo_tag: {registry_repo_tag}")
 
-        # todo - working code - push this part once the container is up and running
         jira_qids = []
         for qid_info in image_vulnerabilities:
             # create JIRA ticket for each QID
@@ -70,5 +69,4 @@ if __name__ == '__main__':
         if all(jira_qids):
             assign_tag_to_assets(registry_repo_tag, qualys_tag, tag_uuid, image_uuid)
 
-    print(f"<< Script Execution Completed >>")
-    print(f"\n==================================\n")
+    print(f"\n================================== Script Execution Ended ==================================\n")

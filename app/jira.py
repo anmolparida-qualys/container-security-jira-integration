@@ -1,17 +1,27 @@
 import json
 import configurations
-
-# configurations.py >> config loader
-jira_domain = configurations.variables["jira_domain"]
-jira_email = configurations.variables["jira_email"]
-jira_api_token = configurations.variables["jira_api_token"]
-
 import requests
 from requests.auth import HTTPBasicAuth
 
 
+def get_jira_domain() -> str:
+    return configurations.get("jira_domain")
+
+
+def get_jira_email() -> str:
+    return configurations.get("jira_email")
+
+
+def get_jira_api_token() -> str:
+    return configurations.get("jira_api_token")
+
+
 def check_jira_credentials():
-    print("Validating Jira Credentials")
+    jira_domain = configurations.variables["jira_domain"]
+    jira_email = configurations.variables["jira_email"]
+    jira_api_token = configurations.variables["jira_api_token"]
+
+    print(f"Validating Jira Credentials for [{jira_domain}] for email [{jira_email}]")
     url = f"{jira_domain}/rest/api/3/myself"
 
     try:
@@ -35,6 +45,10 @@ def check_jira_credentials():
 
 
 def create_jira_issue(summary, description_json) -> None:
+    jira_domain = configurations.variables["jira_domain"]
+    jira_email = configurations.variables["jira_email"]
+    jira_api_token = configurations.variables["jira_api_token"]
+
     json_string = json.dumps(description_json, indent=4)
     payload = {
         "fields": {
