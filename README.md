@@ -15,7 +15,7 @@ This repository provides an automated workflow for creating and managing Jira ti
 vulnerabilities:(severity:5 or severity:4) and not imagesInUse:`[now-7d ... now]` and not tags.name: <qualys_tag> 
 ```
 
-## 📄 Config File: `config.json` 
+## 📄 Configurations File: `configurations.py` 
 
 ```json
 {
@@ -30,7 +30,7 @@ vulnerabilities:(severity:5 or severity:4) and not imagesInUse:`[now-7d ... now]
 ```
 
 
-How to containerize
+## How to containerize
 ```shell
 docker run -p 8080:8080 \
   -e JIRA_DOMAIN="https://yourcompany.atlassian.net" \
