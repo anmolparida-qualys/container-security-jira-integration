@@ -32,7 +32,7 @@ vulnerabilities:(severity:5 or severity:4) and not imagesInUse:`[now-7d ... now]
 
 ## How to containerize
 ```shell
-docker run -p 8080:8080 \
+docker run \
   -e JIRA_DOMAIN="https://yourcompany.atlassian.net" \
   -e JIRA_EMAIL="your_email@example.com" \
   -e JIRA_API_TOKEN="your_jira_api_token_here" \
