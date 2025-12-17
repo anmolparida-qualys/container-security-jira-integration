@@ -1,54 +1,97 @@
+# Container Security → Jira Integration
 
-## Image Vulnerability Management – Jira Ticket Automation
+Automate the creation and management of Jira tickets for vulnerable container images using Qualys APIs — without deploying a separate connector container.
 
-This repository provides an automated workflow for creating and managing Jira tickets for vulnerable container images **without requiring customers to deploy a container-based connector**. The solution relies on QQL-based filtering to detect high-severity vulnerabilities and automatically openQID based Jira tickets.
+This solution fetches container image vulnerability data using QQL filters, and automatically generates Jira issues for critical findings. Once a Jira issue is created for a vulnerability (QID), the image is *tagged* to prevent duplicate tickets.
 
 ---
 
-## 🔎 Use Case
-- Identify container images with a specific QQL i.e. with high-severity vulnerabilities  
-- Automatically create Jira tickets per vulnerability (QID)  
-- Once Jira issue is created for all QIDs tag the image to avoid duplicate ticket creation   
+## 🚀 Features
+
+- 🔎 **Identify high-severity vulnerabilities** (e.g., severity 4 & 5) using Qualys Container Security QQL queries
+- 📩 **Create Jira issues automatically** for each unique vulnerability found
+- 🔁 **Avoid duplicates** via tagging
+- 🐳 Can run as a **containerized automation** or script-based integration
+
+---
+
+## 📦 Repository Contents
+├── app/
+├── .dockerignore
+├── .gitignore
+├── Dockerfile
+├── README.md
+└── requirements.txt
 
 
-```qql
-vulnerabilities:(severity:5 or severity:4) and not imagesInUse:`[now-7d ... now]` and not tags.name: <qualys_tag> 
-```
 
-## 📄 Configurations File: `configurations.py` 
+- **app/** – Core Python application and logic  
+- **Dockerfile** – Defines container build for running the integration  
+- **requirements.txt** – Python dependencies
+
+---
+
+## 🛠️ Prerequisites
+
+Before using this integration, you need:
+
+1. **Qualys Container Security API credentials**
+2. **Jira Cloud/Server API token and account**
+3. A Jira project where issues will be opened
+
+---
+
+## ⚙️ Configuration
+
+Create a `configurations.py` (or environment variables) with the following:
 
 ```json
 {
   "jira_domain": "https://yourcompany.atlassian.net",
   "jira_email": "your_email@example.com",
   "jira_api_token": "your_jira_api_token_here",
-  "qualys_api_gateway_url": "example https://gateway.qg1.apps.qualys.ca",
+  "qualys_api_gateway_url": "https://gateway.qg1.apps.qualys.ca",
   "qualys_access_token": "your_qualys_api_token_here",
   "qualys_qql": "vulnerabilities:(severity:5 or severity:4) and not imagesInUse:[now-7d ... now]",
-  "qualys_tag": "JiraTest1"
+  "qualys_tag": "JiraTicketCreated"
 }
 ```
+💡 The Qualys QQL query filters vulnerabilities based on severity and excludes already processed images.
 
+🐳 Running with Docker
 
-## How to containerize
+Build the image:
+```shell
+docker build -t container-security-jira-integration .
+```
+
+Run with environment variables:
 ```shell
 docker run \
   -e JIRA_DOMAIN="https://yourcompany.atlassian.net" \
   -e JIRA_EMAIL="your_email@example.com" \
-  -e JIRA_API_TOKEN="your_jira_api_token_here" \
+  -e JIRA_API_TOKEN="your_jira_api_token" \
   -e QUALYS_API_GATEWAY_URL="https://gateway.qg1.apps.qualys.ca" \
-  -e QUALYS_ACCESS_TOKEN="your_qualys_api_token_here" \
+  -e QUALYS_ACCESS_TOKEN="your_qualys_api_token" \
   -e QUALYS_QQL="vulnerabilities:(severity:5 or severity:4) and not imagesInUse:[now-7d ... now]" \
-  -e QUALYS_TAG="JiraTest1" \
-  your-image-name
+  -e QUALYS_TAG="qualys-tag" \
+  container-security-jira-integration
 ```
 
 
-EventBridge (manual / cron)
-        ↓
-ECS Task (Fargate)
-        ↓
-Python script runs
-        ↓
-Task exits
-No servers. No timeout limits. Fully managed.
+This will start the integration and begin processing vulnerability results.
+
+🧪 Usage Examples
+
+Depending on your environment, you could schedule this as:
+
+✔ A Cron job
+
+✔ A GitHub Action / CI workflow
+
+✔ A Kubernetes CronJob
+
+##### Each run will:
+- Query Qualys for vulnerabilities 
+- Create Jira tickets for unique items
+- Tag images to avoid duplicates
