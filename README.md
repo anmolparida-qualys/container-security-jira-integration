@@ -16,12 +16,20 @@ This solution fetches container image vulnerability data using QQL filters, and 
 ---
 
 ## 📦 Repository Contents
+
+```text
 ├── app/
 ├── .dockerignore
 ├── .gitignore
 ├── Dockerfile
 ├── README.md
 └── requirements.txt
+```
+
+- **app/** – Core Python application and logic  
+- **Dockerfile** – Defines container build for running the integration  
+- **requirements.txt** – Python dependencies
+
 
 
 
@@ -85,11 +93,9 @@ This will start the integration and begin processing vulnerability results.
 
 Depending on your environment, you could schedule this as:
 
-✔ A Cron job
-
-✔ A GitHub Action / CI workflow
-
-✔ A Kubernetes CronJob
+- A Cron job
+- A GitHub Action / CI workflow
+- A Kubernetes CronJob
 
 ##### Each run will:
 - Query Qualys for vulnerabilities 
