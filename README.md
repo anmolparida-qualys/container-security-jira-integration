@@ -42,3 +42,13 @@ docker run \
   -e QUALYS_TAG="JiraTest1" \
   your-image-name
 ```
+
+
+EventBridge (manual / cron)
+        ↓
+ECS Task (Fargate)
+        ↓
+Python script runs
+        ↓
+Task exits
+No servers. No timeout limits. Fully managed.
