@@ -26,17 +26,6 @@ This solution fetches container image vulnerability data using QQL filters, and 
 └── requirements.txt
 ```
 
-- **app/** – Core Python application and logic  
-- **Dockerfile** – Defines container build for running the integration  
-- **requirements.txt** – Python dependencies
-
-
-
-
-- **app/** – Core Python application and logic  
-- **Dockerfile** – Defines container build for running the integration  
-- **requirements.txt** – Python dependencies
-
 ---
 
 ## 🛠️ Prerequisites
