@@ -75,7 +75,6 @@ docker run \
   container-security-jira-integration
 ```
 
-
 This will start the integration and begin processing vulnerability results.
 
 🧪 Usage Examples
@@ -90,3 +89,41 @@ Depending on your environment, you could schedule this as:
 - Query Qualys for vulnerabilities 
 - Create Jira tickets for unique items
 - Tag images to avoid duplicates
+
+
+### Deployment Command or Create the Stack using the `ecs-fargate-kcs-jira.yaml`
+
+```shell
+aws cloudformation deploy \
+  --stack-name qualys-jira-worker \
+  --template-file ecs-fargate-kcs-jira.yaml \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameter-overrides \
+    ContainerImage=123456789012.dkr.ecr.us-east-1.amazonaws.com/qualys-jira-worker:latest \
+    JiraDomain=mycompany.atlassian.net \
+    JiraEmail=svc-jira@mycompany.com \
+    QualysQql="severity:HIGH" \
+    QualysTag="jira-created" \
+    JiraTokenSecretArn=arn:aws:secretsmanager:us-east-1:123456789012:secret:jira-token \
+    QualysTokenSecretArn=arn:aws:secretsmanager:us-east-1:123456789012:secret:qualys-token \
+    VpcId=vpc-xxxx \
+    SubnetIds=subnet-aaa,subnet-bbb
+
+```
+
+### Run It Now
+
+Run the task manually so you can validate logs and behavior. 
+Use the same subnet(s) you passed to CloudFormation.
+
+```shell
+aws ecs run-task \
+  --cluster qualys-jira-cluster \
+  --task-definition qualys-jira-worker \
+  --launch-type FARGATE \
+  --network-configuration "awsvpcConfiguration={subnets=[subnet-aaa],assignPublicIp=ENABLED}"
+```
+
+**Scheduled**
+
+Runs daily at 1 AM via EventBridge.
