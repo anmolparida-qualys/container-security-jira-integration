@@ -1,4 +1,4 @@
-# Container Security → Jira Integration
+# Container Security | Jira Integration
 
 Automate the creation and management of Jira tickets for vulnerable container images using Qualys APIs — without deploying a separate connector container.
 
