@@ -1,8 +1,16 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: ECS Fargate batch task for Qualys - KCS - Jira automation
+Description: Qualys Container Security Jira Integration
 
+########################################
+# Parameters
+########################################
 Parameters:
-  ContainerImage:
+
+  IamUserName:
+    Type: String
+    Description: IAM user allowed to run ECS tasks (e.g. anparida)
+
+  EcrImageUri:
     Type: String
     Description: ECR image URI
 
@@ -20,7 +28,6 @@ Parameters:
 
   QualysApiGatewayUrl:
     Type: String
-    Description: Qualys API Gateway URL (e.g. https://gateway.qg2.apps.qualys.com)
 
   QualysQql:
     Type: String
@@ -28,38 +35,42 @@ Parameters:
   QualysTag:
     Type: String
 
-  JiraTokenSecretArn:
+  JiraApiTokenSecretArn:
     Type: String
 
-  QualysTokenSecretArn:
+  QualysAccessTokenSecretArn:
     Type: String
 
+########################################
+# Resources
+########################################
 Resources:
 
-  ########################
-  # CloudWatch Logs
-  ########################
-  LogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: /ecs/qualys-jira-worker
-      RetentionInDays: 14
-
-  ########################
+  ####################################
   # ECS Cluster
-  ########################
+  ####################################
   ECSCluster:
     Type: AWS::ECS::Cluster
     Properties:
-      ClusterName: qualys-jira-cluster
+      ClusterName: qualys-kcs-jira-cluster
 
-  ########################
-  # IAM Roles
-  ########################
-  TaskExecutionRole:
+  ####################################
+  # CloudWatch Logs
+  ####################################
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/qualys-kcs-jira
+      RetentionInDays: 14
+
+  ####################################
+  # Execution Role
+  ####################################
+  ExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: qualys-jira-exec-role
+      RoleName: ecsTaskExecutionRole-qualys-kcs-jira
+
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -67,13 +78,30 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
+
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
+      Policies:
+        - PolicyName: AllowSecretsManagerAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  # Covers ALL your Jira/Qualys secrets (present + future)
+                  - arn:aws:secretsmanager:ap-south-1:184801150141:secret:qualys-kcs-jira-integration-*
+
+
+  ####################################
+  # Task Role (Secrets Access)
+  ####################################
   TaskRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: qualys-jira-task-role
+      RoleName: ecsTaskRole-qualys-kcs-jira-cluster
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -87,36 +115,41 @@ Resources:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action:
-                  - secretsmanager:GetSecretValue
+                Action: secretsmanager:GetSecretValue
                 Resource:
-                  - !Ref JiraTokenSecretArn
-                  - !Ref QualysTokenSecretArn
+                  - !Ref JiraApiTokenSecretArn
+                  - !Ref QualysAccessTokenSecretArn
 
-  ########################
+  ####################################
+  # Security Group
+  ####################################
+  TaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ECS Fargate outbound access only
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  ####################################
   # ECS Task Definition
-  ########################
+  ####################################
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
-      Family: qualys-jira-worker
+      Family: qualys-kcs-jira-tasks
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
       Cpu: "512"
       Memory: "1024"
-      NetworkMode: awsvpc
-      RequiresCompatibilities:
-        - FARGATE
-      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      ExecutionRoleArn: !GetAtt ExecutionRole.Arn
       TaskRoleArn: !GetAtt TaskRole.Arn
       ContainerDefinitions:
-        - Name: qualys-jira-worker
-          Image: !Ref ContainerImage
+        - Name: python-container
+          Image: !Ref EcrImageUri
           Essential: true
-          LogConfiguration:
-            LogDriver: awslogs
-            Options:
-              awslogs-group: !Ref LogGroup
-              awslogs-region: !Ref AWS::Region
-              awslogs-stream-prefix: ecs
+
           Environment:
             - Name: JIRA_DOMAIN
               Value: !Ref JiraDomain
@@ -128,61 +161,55 @@ Resources:
               Value: !Ref QualysQql
             - Name: QUALYS_TAG
               Value: !Ref QualysTag
+
           Secrets:
             - Name: JIRA_API_TOKEN
-              ValueFrom: !Ref JiraTokenSecretArn
+              ValueFrom: !Ref JiraApiTokenSecretArn
             - Name: QUALYS_ACCESS_TOKEN
-              ValueFrom: !Ref QualysTokenSecretArn
+              ValueFrom: !Ref QualysAccessTokenSecretArn
 
-  ########################
-  # EventBridge (Optional)
-  ########################
-  EventBridgeRole:
-    Type: AWS::IAM::Role
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /ecs/qualys-kcs-jira
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  ####################################
+  # IAM Policy: Allow User to Run Task
+  ####################################
+  EcsRunTaskPolicy:
+    Type: AWS::IAM::Policy
     Properties:
-      RoleName: qualys-jira-scheduler-role
-      AssumeRolePolicyDocument:
+      PolicyName: ecs-run-task-policy
+      Users:
+        - !Ref IamUserName
+      PolicyDocument:
         Version: "2012-10-17"
         Statement:
+
           - Effect: Allow
-            Principal:
-              Service: events.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: RunTask
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - ecs:RunTask
-                Resource: "*"
-              - Effect: Allow
-                Action:
-                  - iam:PassRole
-                Resource: "*"
+            Action:
+              - ecs:RunTask
+              - ecs:DescribeTasks
+              - ecs:ListTasks
+            Resource: !Ref TaskDefinition
 
-  ScheduledRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: qualys-jira-daily
-      ScheduleExpression: cron(0 1 * * ? *)
-      State: ENABLED
-      Targets:
-        - Id: RunEcsTask
-          Arn: !GetAtt ECSCluster.Arn
-          RoleArn: !GetAtt EventBridgeRole.Arn
-          EcsParameters:
-            TaskDefinitionArn: !Ref TaskDefinition
-            LaunchType: FARGATE
-            NetworkConfiguration:
-              AwsVpcConfiguration:
-                Subnets: !Ref SubnetIds
-                AssignPublicIp: ENABLED
+          - Effect: Allow
+            Action: iam:PassRole
+            Resource:
+              - !GetAtt ExecutionRole.Arn
+              - !GetAtt TaskRole.Arn
 
+########################################
+# Outputs
+########################################
 Outputs:
   ClusterName:
     Value: !Ref ECSCluster
 
   TaskDefinitionArn:
     Value: !Ref TaskDefinition
+
+  SecurityGroupId:
+    Value: !Ref TaskSecurityGroup
