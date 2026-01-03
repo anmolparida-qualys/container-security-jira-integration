@@ -1,129 +1,204 @@
-# Container Security | Jira Integration
 
-Automate the creation and management of Jira tickets for vulnerable container images using Qualys APIs — without deploying a separate connector container.
+# Qualys Container Security → Jira Integration
 
-This solution fetches container image vulnerability data using QQL filters, and automatically generates Jira issues for critical findings. Once a Jira issue is created for a vulnerability (QID), the image is *tagged* to prevent duplicate tickets.
+This project automates the creation of **Jira issues for container image vulnerabilities** detected by **Qualys Container Security**.  
+After Jira tickets are created, the processed images are **tagged in Qualys** to prevent duplicate ticket creation.
 
----
-
-## 🚀 Features
-
-- 🔎 **Identify high-severity vulnerabilities** (e.g., severity 4 & 5) using Qualys Container Security QQL queries
-- 📩 **Create Jira issues automatically** for each unique vulnerability found
-- 🔁 **Avoid duplicates** via tagging
-- 🐳 Can run as a **containerized automation** or script-based integration
+The solution supports **three execution modes**:
+1. Run directly from the command line (Python)
+2. Run as a Docker container
+3. Run as an AWS ECS Fargate task using CloudFormation
 
 ---
 
-## 📦 Repository Contents
+## 📌 Use Cases
 
-```text
-├── app/
-├── .dockerignore
-├── .gitignore
-├── Dockerfile
-├── README.md
-└── requirements.txt
+### Vulnerability Automation
+- Fetch container images using **Qualys QQL**
+- Retrieve image-level vulnerabilities (QIDs)
+- Create **one Jira ticket per QID**
+- Automatically tag images in Qualys after processing
+
+### Security Operations
+- Ad-hoc security scans
+- CI/CD security enforcement
+- Serverless execution using ECS Fargate
+
+---
+
+## 🔐 Configuration Model
+
+- **No hardcoded values**
+- **Environment variables only**
+- **Secrets injected via env vars or AWS Secrets Manager**
+
+---
+
+## Required Environment Variables
+
+| Variable | Description |
+|--------|------------|
+| `JIRA_DOMAIN` | Jira domain (e.g. `company.atlassian.net`) |
+| `JIRA_EMAIL` | Jira user email |
+| `JIRA_API_TOKEN` | Jira API token |
+| `QUALYS_API_GATEWAY_URL` | Qualys API base URL |
+| `QUALYS_ACCESS_TOKEN` | Qualys access token |
+| `QUALYS_QQL` | Qualys QQL filter |
+| `QUALYS_TAG` | Qualys tag applied after Jira creation |
+
+---
+
+# 1️⃣ Run from Command Line (Python)
+
+### Create and activate virtual environment
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+````
+
+### Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### Export environment variables
+
+```bash
+export JIRA_DOMAIN="company.atlassian.net"
+export JIRA_EMAIL="user@company.com"
+export JIRA_API_TOKEN="xxxxx"
+export QUALYS_API_GATEWAY_URL="https://gateway.qg2.apps.qualys.com"
+export QUALYS_ACCESS_TOKEN="xxxxx"
+export QUALYS_QQL="severity:5"
+export QUALYS_TAG="jira-created"
+```
+
+### Run the script
+
+```bash
+python3 main.py
 ```
 
 ---
 
-## 🛠️ Prerequisites
+# 2️⃣ Run Using Docker
 
-Before using this integration, you need:
+### Build Docker image
 
-1. **Qualys Container Security API credentials**
-2. **Jira Cloud/Server API token and account**
-3. A Jira project where issues will be opened
+```bash
+docker build -t qualys-jira-integration .
+```
+
+### Run Docker container with env vars
+
+```bash
+docker run --rm \
+  -e JIRA_DOMAIN \
+  -e JIRA_EMAIL \
+  -e JIRA_API_TOKEN \
+  -e QUALYS_API_GATEWAY_URL \
+  -e QUALYS_ACCESS_TOKEN \
+  -e QUALYS_QQL \
+  -e QUALYS_TAG \
+  qualys-jira-integration
+```
+
+> You may also use an `.env` file:
+>
+> ```bash
+> docker run --env-file .env qualys-jira-integration
+> ```
 
 ---
 
-## ⚙️ Configuration
+# 3️⃣ Run on AWS ECS Fargate (CloudFormation)
 
-Create a `configurations.py` (or environment variables) with the following:
+## Architecture Overview
 
-```json
-{
-  "jira_domain": "https://yourcompany.atlassian.net",
-  "jira_email": "your_email@example.com",
-  "jira_api_token": "your_jira_api_token_here",
-  "qualys_api_gateway_url": "https://gateway.qg1.apps.qualys.ca",
-  "qualys_access_token": "your_qualys_api_token_here",
-  "qualys_qql": "vulnerabilities:(severity:5 or severity:4) and not imagesInUse:[now-7d ... now]",
-  "qualys_tag": "JiraTicketCreated"
-}
-```
-💡 The Qualys QQL query filters vulnerabilities based on severity and excludes already processed images.
+* Docker image stored in **Amazon ECR**
+* Executed as **ECS Fargate task**
+* Secrets stored in **AWS Secrets Manager**
+* Logs captured in **CloudWatch Logs**
 
-🐳 Running with Docker
+---
 
-Build the image:
-```shell
-docker build -t container-security-jira-integration .
+## Build and Push Image to ECR (Mac)
+
+```bash
+aws ecr get-login-password --region ap-south-1 \
+| docker login --username AWS --password-stdin <account-id>.dkr.ecr.ap-south-1.amazonaws.com
 ```
 
-Run with environment variables:
-```shell
-docker run \
-  -e JIRA_DOMAIN="https://yourcompany.atlassian.net" \
-  -e JIRA_EMAIL="your_email@example.com" \
-  -e JIRA_API_TOKEN="your_jira_api_token" \
-  -e QUALYS_API_GATEWAY_URL="https://gateway.qg1.apps.qualys.ca" \
-  -e QUALYS_ACCESS_TOKEN="your_qualys_api_token" \
-  -e QUALYS_QQL="vulnerabilities:(severity:5 or severity:4) and not imagesInUse:[now-7d ... now]" \
-  -e QUALYS_TAG="qualys-tag" \
-  container-security-jira-integration
+```bash
+docker buildx create --use
+docker buildx build \
+  --platform linux/amd64 \
+  -t <account-id>.dkr.ecr.ap-south-1.amazonaws.com/container-security/jira-integration:v1 \
+  --push .
 ```
 
-This will start the integration and begin processing vulnerability results.
+---
 
-🧪 Usage Examples
+## Secrets Manager Setup
 
-Depending on your environment, you could schedule this as:
+Create **plaintext secrets** (not JSON):
 
-- A Cron job
-- A GitHub Action / CI workflow
-- A Kubernetes CronJob
+* `jira-api-token`
+* `qualys-access-token`
 
-##### Each run will:
-- Query Qualys for vulnerabilities 
-- Create Jira tickets for unique items
-- Tag images to avoid duplicates
+Each secret must contain **only the raw token value**, without quotes.
 
+---
 
-### Deployment Command or Create the Stack using the `ecs-fargate-kcs-jira.yaml`
+## Deploy ECS Stack
 
-```shell
+```bash
 aws cloudformation deploy \
-  --stack-name qualys-jira-worker \
-  --template-file ecs-fargate-kcs-jira.yaml \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides \
-    ContainerImage=123456789012.dkr.ecr.us-east-1.amazonaws.com/qualys-jira-worker:latest \
-    JiraDomain=mycompany.atlassian.net \
-    JiraEmail=svc-jira@mycompany.com \
-    QualysQql="severity:HIGH" \
-    QualysTag="jira-created" \
-    JiraTokenSecretArn=arn:aws:secretsmanager:us-east-1:123456789012:secret:jira-token \
-    QualysTokenSecretArn=arn:aws:secretsmanager:us-east-1:123456789012:secret:qualys-token \
-    VpcId=vpc-xxxx \
-    SubnetIds=subnet-aaa,subnet-bbb
-
+  --template-file ecs-stack.yaml \
+  --stack-name qualys-jira-integration \
+  --capabilities CAPABILITY_NAMED_IAM
 ```
 
-### Run It Now
+---
 
-Run the task manually so you can validate logs and behavior. 
-Use the same subnet(s) you passed to CloudFormation.
+## Run ECS Task
 
-```shell
-aws ecs run-task \
-  --cluster qualys-jira-cluster \
-  --task-definition qualys-jira-worker \
-  --launch-type FARGATE \
-  --network-configuration "awsvpcConfiguration={subnets=[subnet-aaa],assignPublicIp=ENABLED}"
-```
+1. Open **AWS ECS Console**
+2. Select the cluster
+3. Click **Run new task**
+4. Launch type: **FARGATE**
+5. Select the latest task definition
+6. Run task
 
-**Scheduled**
+---
 
-Runs daily at 1 AM via EventBridge.
+## 📜 Logging
+
+* Logs are available in **CloudWatch Logs**
+* Log group: `/ecs/qualys-kcs-jira`
+* All stdout/stderr is captured automatically
+
+---
+
+## 🔎 Troubleshooting
+
+| Issue                  | Resolution                                                |
+| ---------------------- | --------------------------------------------------------- |
+| Image pull error       | Verify ECR tag and execution role permissions             |
+| Secrets access denied  | Ensure execution role has `secretsmanager:GetSecretValue` |
+| Task exits immediately | Check CloudWatch logs                                     |
+| No images returned     | Validate QQL syntax                                       |
+
+---
+
+## ✅ Summary
+
+| Mode        | Usage                         |
+| ----------- | ----------------------------- |
+| Python CLI  | Local development & debugging |
+| Docker      | CI/CD & repeatable runs       |
+| ECS Fargate | Production automation         |
+
+---

@@ -29,11 +29,11 @@ def validate_if_tag_exists(qualys_tag):
 
     if response.status_code == 200:
         if qualys_tag in response.json()["tagDetails"]['existingTags'].keys():
-            print(f"qualys_tag [{qualys_tag}] exists")
+            print(f"Provided qualys_tag [{qualys_tag}] exists")
             return response.json()["tagDetails"]['existingTags'][qualys_tag]
         else:
             print(f"Tag [{qualys_tag}] does not exist. Please provide valid qualys_tag.")
-            print(f"<< Script Execution Completed >>")
+            print("\n================================== Script Execution Ended ==================================\n")
             sys.exit(0)
 
     else:
@@ -53,22 +53,19 @@ def get_all_images(qql: str) -> dict:
             for image in images:
                 repo = image['repo'][0]
                 registry_repo_tag: str = f"{repo['registry']}/{repo['repository']}:{repo['tag']}"
-                image_dict = {
-                    registry_repo_tag: {
-                        'sha': image.get("sha"),
-                        'uuid': image.get("uuid")
-                    }
+                image_dict[registry_repo_tag] = {
+                    'sha': image.get("sha"),
+                    'uuid': image.get("uuid")
                 }
-
 
     elif response.status_code == 400:
         print(f"Please check if the syntax of qql >> {qql}")
-        print(f"<< Script Execution Terminated >>")
+        print("\n================================== Script Execution Ended ==================================\n")
         sys.exit(0)
 
     elif response.status_code == 204:
         print(f"No images found with the provided qql >> {qql}")
-        print(f"<< Script Execution Completed >>")
+        print("\n================================== Script Execution Ended ==================================\n")
         sys.exit(0)
     else:
         sys.exit(f"Failed to fetch images. Status {response.status_code}, Response: {response.text}")
@@ -77,7 +74,7 @@ def get_all_images(qql: str) -> dict:
 
 
 def get_vulnerability_details_of_the_image(registry_repo_tag, image_sha: str):
-    url = f"{get_qualys_api_gateway_url}/csapi/v1.3/images/{image_sha}"
+    url = f"{get_qualys_api_gateway_url()}/csapi/v1.3/images/{image_sha}"
     response = requests.get(url, headers=get_headers())
 
     image_vulnerabilities = []
@@ -133,7 +130,7 @@ def assign_tag_to_assets(registry_repo_tag, qualys_tag, tag_uuid, entity_uuid):
                    "isCascadeToContainer": False}],
                "entityUUID": entity_uuid}
 
-    url = f"{get_qualys_api_gateway_url}/csapi/v1.3/tag/assign"
+    url = f"{get_qualys_api_gateway_url()}/csapi/v1.3/tag/assign"
     response = requests.post(url, json=payload, headers=get_headers())
 
     if response.status_code == 200:
