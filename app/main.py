@@ -52,10 +52,10 @@ if __name__ == "__main__":
 
     # Exclude already tagged images
     qql = f"{qualys_qql} and not tags.name:{qualys_tag}"
+    print(f"Fetching results for QQL {qql}")
 
     # Get images
     image_dict = get_all_images(qql)
-    print(json.dumps(image_dict, indent=4))
 
     for registry_repo_tag, sha_uuid in image_dict.items():
         image_sha = sha_uuid["sha"]
