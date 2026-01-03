@@ -1,13 +1,22 @@
+import json
 import os
+import sys
+
 from container_security import *
 from jira import *
 
 
 def load_config():
-    config = configurations.variables.copy()
+    """
+    Load configuration with priority:
+    1. Environment variables
+    2. Default values from configurations.variables
+    """
+    # Start with defaults
+    config = dict(configurations.variables)
 
     # override config with environment variables if provided through cli or while running container
-    overrides = {
+    env_overrides = {
         "jira_domain": os.getenv("JIRA_DOMAIN"),
         "jira_email": os.getenv("JIRA_EMAIL"),
         "jira_api_token": os.getenv("JIRA_API_TOKEN"),
@@ -17,56 +26,56 @@ def load_config():
         "qualys_tag": os.getenv("QUALYS_TAG"),
     }
 
-    # only override if provided
-    for key, value in overrides.items():
-        if value:
+    # Override only if ENV var is set
+    for key, value in env_overrides.items():
+        if value is not None:
             config[key] = value
 
     return config
 
 
-if __name__ == '__main__':
-    print(f"\n================================== Script Execution Started ==================================\n")
+if __name__ == "__main__":
+    print("\n================================== Script Execution Started ==================================\n")
 
-    configurations.variables.clear()
+    # Load final merged config
     configurations.variables.update(load_config())
 
-    # validate if JIRA credentials provided are correct
+    # Validate JIRA credentials
     if not check_jira_credentials():
-        sys.exit()
+        sys.exit(1)
 
-    # validate if the tag exists - exit if not
     qualys_qql = configurations.variables["qualys_qql"]
     qualys_tag = configurations.variables["qualys_tag"]
 
+    # Validate tag
     tag_uuid = validate_if_tag_exists(qualys_tag)
 
-    qql = f"{qualys_qql} and not tags.name:{qualys_tag}"  # excluding the already tagged images
+    # Exclude already tagged images
+    qql = f"{qualys_qql} and not tags.name:{qualys_tag}"
 
-    # get all images with qql excluding the images already tagged
+    # Get images
     image_dict = get_all_images(qql)
-    print(image_dict)
+    print(json.dumps(image_dict, indent=4))
 
-    # get vulnerability QDS details to be populated in the JIRA issue
     for registry_repo_tag, sha_uuid in image_dict.items():
-        image_sha = sha_uuid['sha']
-        image_uuid = sha_uuid['uuid']
-        print(f"Getting vulnerability details for registry_repo_tag: {registry_repo_tag}")
+        image_sha = sha_uuid["sha"]
+        image_uuid = sha_uuid["uuid"]
 
-        # get image level vulnerabilities - QIDs
-        jira_created = False
+        print(f"\nGetting vulnerability details for registry_repo_tag: {registry_repo_tag}")
+
         image_vulnerabilities = get_vulnerability_details_of_the_image(registry_repo_tag, image_sha)
+
         print(f"Creating JIRA tickets for all QIDs present in registry_repo_tag: {registry_repo_tag}")
 
         jira_qids = []
+
         for qid_info in image_vulnerabilities:
-            # create JIRA ticket for each QID
             summary = f"QID {qid_info['qid']} | {registry_repo_tag}"
             create_jira_issue(summary, description_json=qid_info)
             jira_qids.append(True)
 
-        #  tag the assets with qualys tag only if all QIDs are now created in Jira
+        # Tag image only if all JIRA issues were created
         if all(jira_qids):
             assign_tag_to_assets(registry_repo_tag, qualys_tag, tag_uuid, image_uuid)
 
-    print(f"\n================================== Script Execution Ended ==================================\n")
+    print("\n================================== Script Execution Ended ==================================\n")
