@@ -36,6 +36,7 @@ def check_jira_credentials():
             print(response.text)
             print(f'Please check the values ["jira_domain","jira_email","jira_api_token"]')
         else:
+            print(f"Jira Login Successful for [{jira_domain}] for email [{jira_email}]")
             return True
 
     except requests.exceptions.RequestException as e:
