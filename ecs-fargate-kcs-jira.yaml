@@ -5,14 +5,13 @@ Description: Qualys Container Security Jira Integration
 # Parameters
 ########################################
 Parameters:
-
   IamUserName:
     Type: String
-    Description: IAM user allowed to run ECS tasks (e.g. anparida)
+    Description: IAM user allowed to run ECS tasks
 
   EcrImageUri:
     Type: String
-    Description: ECR image URI
+    Description: Full ECR image URI
 
   VpcId:
     Type: AWS::EC2::VPC::Id
@@ -22,24 +21,31 @@ Parameters:
 
   JiraDomain:
     Type: String
+    Description: Jira domain (e.g., mydomain.atlassian.net)
 
   JiraEmail:
     Type: String
+    Description: Jira email
 
   QualysApiGatewayUrl:
     Type: String
+    Description: Qualys API URL
 
   QualysQql:
     Type: String
+    Description: Qualys QQL
 
   QualysTag:
     Type: String
+    Description: Tag to assign to images
 
   JiraApiTokenSecretArn:
     Type: String
+    Description: ARN of Jira API token secret
 
   QualysAccessTokenSecretArn:
     Type: String
+    Description: ARN of Qualys access token secret
 
 ########################################
 # Resources
@@ -64,13 +70,12 @@ Resources:
       RetentionInDays: 14
 
   ####################################
-  # Execution Role
+  # Execution Role (pull images + secrets)
   ####################################
   ExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: ecsTaskExecutionRole-qualys-kcs-jira
-
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -78,10 +83,8 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
-
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-
       Policies:
         - PolicyName: AllowSecretsManagerAccess
           PolicyDocument:
@@ -90,18 +93,18 @@ Resources:
               - Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
                 Resource:
-                  # Covers ALL your Jira/Qualys secrets (present + future)
-                  - arn:aws:secretsmanager:ap-south-1:184801150141:secret:qualys-kcs-jira-integration-*
-
+                  - !Ref JiraApiTokenSecretArn
+                  - !Ref QualysAccessTokenSecretArn
 
   ####################################
-  # Task Role (Secrets Access)
+  # Task Role (runtime container AWS API access if needed)
   ####################################
   TaskRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: ecsTaskRole-qualys-kcs-jira-cluster
+      RoleName: ecsTaskRole-qualys-kcs-jira
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -115,7 +118,9 @@ Resources:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: secretsmanager:GetSecretValue
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
                 Resource:
                   - !Ref JiraApiTokenSecretArn
                   - !Ref QualysAccessTokenSecretArn
@@ -149,7 +154,6 @@ Resources:
         - Name: python-container
           Image: !Ref EcrImageUri
           Essential: true
-
           Environment:
             - Name: JIRA_DOMAIN
               Value: !Ref JiraDomain
@@ -161,13 +165,11 @@ Resources:
               Value: !Ref QualysQql
             - Name: QUALYS_TAG
               Value: !Ref QualysTag
-
           Secrets:
             - Name: JIRA_API_TOKEN
               ValueFrom: !Ref JiraApiTokenSecretArn
             - Name: QUALYS_ACCESS_TOKEN
               ValueFrom: !Ref QualysAccessTokenSecretArn
-
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -176,7 +178,7 @@ Resources:
               awslogs-stream-prefix: ecs
 
   ####################################
-  # IAM Policy: Allow User to Run Task
+  # IAM Policy: Allow user to run ECS tasks
   ####################################
   EcsRunTaskPolicy:
     Type: AWS::IAM::Policy
@@ -187,14 +189,12 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-
           - Effect: Allow
             Action:
               - ecs:RunTask
               - ecs:DescribeTasks
               - ecs:ListTasks
             Resource: !Ref TaskDefinition
-
           - Effect: Allow
             Action: iam:PassRole
             Resource:
